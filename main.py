@@ -55,7 +55,7 @@ def recommend(genres):
         vector = cv.fit_transform(g_movie["genres"]).toarray()
 
         similarity = cosine_similarity(vector)
-        
+
         movie_index = g_movie[g_movie['title'] == 'movieU'].index[0]
         distances = similarity[movie_index]
 
@@ -63,11 +63,12 @@ def recommend(genres):
 
         recommendations = []
         for i in movie_list:
-            movie_id = g_movie.iloc[i[0]].movie_id
-            recommendations.append({
-                "title": g_movie.iloc[i[0]].title,
-                "poster_url": fetch_movie_poster(movie_id)
-            })
+            if g_movie.iloc[i[0]].title != "movieU":  # Exclude "movieU" explicitly
+                movie_id = g_movie.iloc[i[0]].movie_id
+                recommendations.append({
+                    "title": g_movie.iloc[i[0]].title,
+                    "poster_url": fetch_movie_poster(movie_id)
+                })
 
         g_movie.drop(index=movie_index, inplace=True)
 
@@ -76,8 +77,7 @@ def recommend(genres):
     except Exception as e:
         print(f"Error in recommendation: {e}")
         raise
-
-
+        
 class GenreRequest(BaseModel):
     genres: list[str]
 
