@@ -45,33 +45,38 @@ def stem(text):
     return " ".join(y)
 
 def recommend(genres):
+    try:
+        g_movie['genres'] = g_movie['genres'].apply(lambda x: " ".join(x) if isinstance(x, list) else x)
+        g_movie.loc[len(g_movie)] = ["0", "movieU", " ".join(genres)]
 
-    g_movie_copy = g_movie.copy()
+        g_movie["genres"] = g_movie["genres"].apply(lambda x: x.lower() if isinstance(x, str) else x)
+        g_movie["genres"] = g_movie["genres"].apply(stem)
 
-    g_movie_copy['genres'] = g_movie_copy['genres'].apply(lambda x: " ".join(x) if isinstance(x, list) else x)
-    g_movie_copy.loc[len(g_movie_copy)] = ["0", "movieU", " ".join(genres)]
+        vector = cv.fit_transform(g_movie["genres"]).toarray()
 
-    g_movie_copy["genres"] = g_movie_copy["genres"].apply(lambda x: x.lower() if isinstance(x, str) else x)
-    g_movie_copy["genres"] = g_movie_copy["genres"].apply(stem)
+        similarity = cosine_similarity(vector)
+        
+        movie_index = g_movie[g_movie['title'] == 'movieU'].index[0]
+        distances = similarity[movie_index]
 
-    vector = cv.fit_transform(g_movie_copy["genres"]).toarray()
+        movie_list = sorted(list(enumerate(distances)), reverse=True, key=lambda x: x[1])[1:36]
 
-    similarity = cosine_similarity(vector)
+        recommendations = []
+        for i in movie_list:
+            movie_id = g_movie.iloc[i[0]].movie_id
+            recommendations.append({
+                "title": g_movie.iloc[i[0]].title,
+                "poster_url": fetch_movie_poster(movie_id)
+            })
 
-    movie_index = g_movie_copy[g_movie_copy['title'] == 'movieU'].index[0]
-    distances = similarity[movie_index]
+        g_movie.drop(index=movie_index, inplace=True)
 
-    movie_list = sorted(list(enumerate(distances)), reverse=True, key=lambda x: x[1])[1:36]
+        return recommendations
 
-    recommendations = []
-    for i in movie_list:
-        movie_id = g_movie_copy.iloc[i[0]].movie_id
-        recommendations.append({
-            "title": g_movie_copy.iloc[i[0]].title,
-            "poster_url": fetch_movie_poster(movie_id)
-        })
+    except Exception as e:
+        print(f"Error in recommendation: {e}")
+        raise
 
-    return recommendations
 
 class GenreRequest(BaseModel):
     genres: list[str]
